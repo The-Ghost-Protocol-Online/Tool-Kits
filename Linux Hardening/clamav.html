@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClamAV — Antivirus Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Oswald:wght@400;500;600&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base:       #0b0f1a;
+            --bg-surface:    #111827;
+            --bg-terminal:   #080c14;
+            --accent-blue:   #1e6db5;
+            --accent-bright: #3b9eff;
+            --accent-warn:   #e05c3a;
+            --accent-ok:     #2db37c;
+            --text-primary:  #dce6f0;
+            --text-secondary:#7f96b2;
+            --text-terminal: #58d5c9;
+            --border:        rgba(59,158,255,0.18);
+            --border-dim:    rgba(59,158,255,0.07);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Source Sans 3', sans-serif; background-color: var(--bg-base); color: var(--text-primary); line-height: 1.75; min-height: 100vh; }
+        body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(59,158,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(59,158,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+        .page-wrapper { max-width: 100%; margin: 0; padding: 40px 40px 80px; }
+
+        header { border: 1px solid var(--border); background: var(--bg-surface); border-radius: 6px; padding: 36px 40px; margin-bottom: 28px; position: relative; overflow: hidden; }
+        header::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent-blue), var(--accent-bright)); }
+        .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--accent-bright); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px; }
+        header h1 { font-family: 'Oswald', sans-serif; font-size: 2.4rem; font-weight: 600; letter-spacing: 0.03em; color: #fff; line-height: 1.1; }
+        header .sub { margin-top: 10px; color: var(--text-secondary); font-weight: 300; font-size: 1.05rem; }
+        .badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+        .badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(59,158,255,0.1); border: 1px solid rgba(59,158,255,0.3); border-radius: 4px; padding: 4px 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.73rem; color: var(--accent-bright); }
+        .badge::before { content: '●'; font-size: 0.45rem; }
+
+        .context-card { background: var(--bg-surface); border: 1px solid var(--border-dim); border-radius: 6px; padding: 22px 26px; margin-bottom: 16px; }
+        .context-card h3 { font-family: 'Oswald', sans-serif; font-size: 0.92rem; font-weight: 500; color: var(--accent-bright); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+        .context-card p { font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 8px; }
+        .context-card p:last-child { margin-bottom: 0; }
+
+        .step-card { background: var(--bg-surface); border: 1px solid var(--border-dim); border-radius: 6px; margin-bottom: 16px; overflow: hidden; transition: border-color 0.2s; }
+        .step-card:hover { border-color: var(--border); }
+        .step-card.ok-card:hover { border-color: rgba(45,179,124,0.35); }
+        .step-header { display: flex; align-items: center; gap: 16px; padding: 20px 24px 0; }
+        .step-num { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; font-weight: 700; color: var(--accent-bright); background: rgba(59,158,255,0.12); border: 1px solid rgba(59,158,255,0.25); border-radius: 4px; padding: 3px 8px; letter-spacing: 0.1em; white-space: nowrap; }
+        .step-num.ok { color: var(--accent-ok); background: rgba(45,179,124,0.1); border-color: rgba(45,179,124,0.3); }
+        .step-num.warn { color: var(--accent-warn); background: rgba(224,92,58,0.1); border-color: rgba(224,92,58,0.3); }
+        .step-header h2 { font-family: 'Oswald', sans-serif; font-size: 1.15rem; font-weight: 500; letter-spacing: 0.04em; color: #e8eef5; }
+        .step-body { padding: 14px 24px 22px; }
+        .step-body p { font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 12px; }
+        .step-body p:last-child { margin-bottom: 0; }
+
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--text-terminal); background: rgba(88,213,201,0.08); padding: 1px 5px; border-radius: 3px; }
+
+        .terminal { background: var(--bg-terminal); border: 1px solid rgba(59,158,255,0.12); border-radius: 6px; margin: 12px 0; overflow: hidden; }
+        .terminal-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(59,158,255,0.08); }
+        .t-label { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #3a5570; text-transform: uppercase; letter-spacing: 0.15em; }
+        .copy-btn { display: flex; align-items: center; gap: 5px; background: none; border: 1px solid rgba(59,158,255,0.18); border-radius: 4px; padding: 3px 10px; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-secondary); transition: all 0.15s ease; }
+        .copy-btn:hover { background: rgba(59,158,255,0.1); border-color: var(--accent-bright); color: var(--accent-bright); }
+        .copy-btn.copied { background: rgba(45,179,124,0.1); border-color: var(--accent-ok); color: var(--accent-ok); }
+        .terminal-code { padding: 16px 18px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-terminal); line-height: 1.9; white-space: pre; overflow-x: auto; }
+        .cm { color: #344f65; font-style: italic; }
+
+        .note { font-size: 0.85rem; color: #4a6a88; font-style: italic; padding-left: 12px; border-left: 2px solid rgba(59,158,255,0.18); margin-top: 10px; }
+
+        /* Category grid */
+        .category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+        .cat-item { background: var(--bg-terminal); border: 1px solid rgba(59,158,255,0.09); border-radius: 5px; padding: 11px 14px; }
+        .cat-name { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text-terminal); margin-bottom: 4px; }
+        .cat-desc { font-size: 0.82rem; color: #587590; line-height: 1.4; }
+
+        /* Output anatomy */
+        .output-section { margin-top: 14px; }
+        .out-row { display: flex; gap: 14px; align-items: flex-start; padding: 12px 14px; background: var(--bg-terminal); border: 1px solid rgba(59,158,255,0.08); border-radius: 5px; margin-bottom: 8px; }
+        .out-row:last-child { margin-bottom: 0; }
+        .out-tag { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 700; border-radius: 3px; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+        .tag-warn { color: var(--accent-warn); background: rgba(224,92,58,0.12); border: 1px solid rgba(224,92,58,0.25); }
+        .tag-suggest { color: #e0b03a; background: rgba(224,176,58,0.1); border: 1px solid rgba(224,176,58,0.25); }
+        .tag-score { color: var(--accent-ok); background: rgba(45,179,124,0.1); border: 1px solid rgba(45,179,124,0.25); }
+        .tag-info { color: var(--accent-bright); background: rgba(59,158,255,0.1); border: 1px solid rgba(59,158,255,0.25); }
+        .out-text { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; }
+        .out-text strong { color: var(--text-primary); }
+    </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+    <header>
+        <div class="eyebrow">System Security // Antivirus</div>
+        <h1>ClamAV Antivirus</h1>
+        <p class="sub">Open-source malware scanner — install, update, scan, automate</p>
+        <div class="badges">
+            <span class="badge">Debian / Ubuntu</span>
+            <span class="badge">Open Source</span>
+            <span class="badge">CLI-Driven</span>
+            <span class="badge">Daemon Mode</span>
+        </div>
+    </header>
+
+    <div class="context-card">
+        <h3>What does ClamAV actually do?</h3>
+        <p>ClamAV is an open-source antivirus engine maintained by Cisco Talos. It scans files, directories, and mail streams against a signature database of known malware, trojans, and malicious scripts. On Linux systems it's particularly useful for scanning files that pass through your machine destined for Windows users, auditing uploaded content, and satisfying compliance requirements that mandate antivirus coverage.</p>
+        <p>It doesn't run in the background watching files in real time by default — <code>clamscan</code> is an on-demand scanner. The daemon variant (<code>clamd</code>) is available for integration with mail servers and web applications where speed matters. For most personal and small-server use cases, scheduled on-demand scans are sufficient.</p>
+    </div>
+
+    <div class="step-card">
+        <div class="step-header"><span class="step-num">STEP 01</span><h2>Verify Installation</h2></div>
+        <div class="step-body">
+            <p>Check whether ClamAV is already present on your system by querying the binary directly:</p>
+            <div class="terminal">
+                <div class="terminal-bar"><span class="t-label">terminal</span><button class="copy-btn" onclick="copyCode(this)"><span>⎘</span> Copy</button></div>
+                <div class="terminal-code">clamscan --version</div>
+            </div>
+            <p class="note">If a version string is returned (e.g. <code>ClamAV 1.0.x</code>), skip to Step 03. "Command not found" means proceed to Step 02.</p>
+        </div>
+    </div>
+
+    <div class="step-card">
+        <div class="step-header"><span class="step-num">STEP 02</span><h2>Install ClamAV</h2></div>
+        <div class="step-body">
+            <p>Install both the scanner and the automatic signature updater from the standard Debian/Ubuntu repositories:</p>
+            <div class="terminal">
+                <div class="terminal-bar"><span class="t-label">terminal</span><button class="copy-btn" onclick="copyCode(this)"><span>⎘</span> Copy</button></div>
+                <div class="terminal-code">sudo apt update && sudo apt install clamav clamav-freshclam -y</div>
+            </div>
+            <p>This installs two components:</p>
+            <div class="category-grid">
+                <div class="cat-item">
+                    <div class="cat-name">clamav</div>
+                    <div class="cat-desc">The <code>clamscan</code> scanner binary and its signature database engine</div>
+                </div>
+                <div class="cat-item">
+                    <div class="cat-name">clamav-freshclam</div>
+                    <div class="cat-desc">The <code>freshclam</code> daemon that keeps virus definitions up to date automatically</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="step-card">
+        <div class="step-header"><span class="step-num">STEP 03</span><h2>Update Virus Definitions</h2></div>
+        <div class="step-body">
+            <p>ClamAV is only as effective as its definitions. Before scanning anything, ensure the database is current. The <code>freshclam</code> service normally handles this automatically, but you should run a manual update first — especially on a fresh install:</p>
+            <div class="terminal">
+                <div class="terminal-bar"><span class="t-label">terminal</span><button class="copy-btn" onclick="copyCode(this)"><span>⎘</span> Copy</button></div>
+                <div class="terminal-code"><span class="cm"># Stop the freshclam service before running manually — they conflict</span>
+sudo systemctl stop clamav-freshclam
+sudo freshclam
+sudo systemctl start clamav-freshclam</div>
+            </div>
+            <p>You'll see <code>freshclam</code> connect to the ClamAV mirror network and download the latest <code>main.cvd</code>, <code>daily.cvd</code>, and <code>bytecode.cvd</code> definition files. This can take a minute on the first run.</p>
+            <p class="note">The freshclam service checks for updates multiple times per day once running. You only need to run it manually when you want to force an immediate update.</p>
+        </div>
+    </div>
+
+    <div class="step-card">
+        <div class="step-header"><span class="step-num">STEP 04</span><h2>Run Your First Scan</h2></div>
+        <div class="step-body">
+            <p>Scan a specific directory recursively. The flags below give you a clean, actionable output:</p>
+            <div class="terminal">
+                <div class="terminal-bar"><span class="t-label">terminal</span><button class="copy-btn" onclick="copyCode(this)"><span>⎘</span> Copy</button></div>
+                <div class="terminal-code"><span class="cm"># Scan your home directory — recursive, show infected files only</span>
+clamscan -r --bell -i ~/
+
+<span class="cm"># Scan the entire system (slow — use for thorough audits)</span>
+sudo clamscan -r --bell -i /</div>
+            </div>
+            <p>Flag breakdown:</p>
+            <div class="category-grid">
+                <div class="cat-item">
+                    <div class="cat-name">-r</div>
+                    <div class="cat-desc">Recursive — scan all subdirectories</div>
+                </div>
+                <div class="cat-item">
+                    <div class="cat-name">--bell</div>
+                    <div class="cat-desc">Audible alert if a threat is found</div>
+                </div>
+                <div class="cat-item">
+                    <div class="cat-name">-i</div>
+                    <div class="cat-desc">Only print infected files — suppresses the noise of clean results</div>
+                </div>
+                <div class="cat-item">
+                    <div class="cat-name">sudo</div>
+                    <div class="cat-desc">Required for scanning system directories outside your home</div>
+                </div>
+            </div>
+            <p class="note" style="margin-top:14px;">A full system scan can take 20–60 minutes depending on disk size. Use <code>~/</code> or a specific path for faster targeted scans.</p>
+        </div>
+    </div>
+
+    <div class="step-card ok-card">
+        <div class="step-header"><span class="step-num ok">STEP 05</span><h2>Reading the Results</h2></div>
+        <div class="step-body">
+            <p>When the scan completes, ClamAV prints a summary. Here's what each line means:</p>
+            <div class="output-section">
+                <div class="out-row">
+                    <span class="out-tag tag-score">CLEAN</span>
+                    <div class="out-text"><strong>No threats found.</strong> The summary will show <code>Infected files: 0</code>. With the <code>-i</code> flag, you'll see no file output — that's expected and means everything is clean.</div>
+                </div>
+                <div class="out-row">
+                    <span class="out-tag tag-warn">INFECTED</span>
+                    <div class="out-text"><strong>A threat signature matched.</strong> The infected file path and signature name are printed — e.g. <code>/home/user/file.sh: Eicar-Signature FOUND</code>. Investigate before deleting; false positives do occur, particularly with scripts and compressed archives.</div>
+                </div>
+                <div class="out-row">
+                    <span class="out-tag tag-suggest">ERRORS</span>
+                    <div class="out-text"><strong>Files that couldn't be read.</strong> Usually permission errors on system files — not a security concern. Running with <code>sudo</code> eliminates most of these.</div>
+                </div>
+                <div class="out-row">
+                    <span class="out-tag tag-info">SUMMARY</span>
+                    <div class="out-text"><strong>Scanned directories, scanned files, infected files, time elapsed.</strong> The line you care about is <code>Infected files: N</code>. Anything above 0 warrants investigation.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="step-card">
+        <div class="step-header"><span class="step-num">STEP 06</span><h2>Quarantine or Remove Infected Files</h2></div>
+        <div class="step-body">
+            <p>If threats are found, you have two options. Quarantine is safer — it moves the file rather than destroying it, so you can review it before committing to deletion:</p>
+            <div class="terminal">
+                <div class="terminal-bar"><span class="t-label">terminal</span><button class="copy-btn" onclick="copyCode(this)"><span>⎘</span> Copy</button></div>
+                <div class="terminal-code"><span class="cm"># Move infected files to a quarantine directory instead of deleting</span>
+sudo mkdir -p /quarantine
+sudo clamscan -r -i --move=/quarantine ~/
+
+<span class="cm"># Or remove immediately (irreversible — use with caution)</span>
+sudo clamscan -r -i --remove ~/</div>
+            </div>
+            <p>Before removing, search the ClamAV signature name online — e.g. at <a href="https://www.virustotal.com" target="_blank" rel="noopener noreferrer" style="color:var(--accent-bright);text-decoration:none;">VirusTotal</a> or the <a href="https://www.clamav.net/reports/malware" target="_blank" rel="noopener noreferrer" style="color:var(--accent-bright);text-decoration:none;">ClamAV malware portal</a> — to confirm it's a genuine detection and not a false positive.</p>
+            <p class="note">Scripts, package installers, and pentest tools are common false positive sources. When in doubt, quarantine first.</p>
+        </div>
+    </div>
+
+    <div class="step-card">
+        <div class="step-header"><span class="step-num">STEP 07</span><h2>Automate Weekly Scans with Cron</h2></div>
+        <div class="step-body">
+            <p>Set up a scheduled scan so your home directory is checked automatically every week. The results are written to a log file you can review at any time:</p>
+            <div class="terminal">
+                <div class="terminal-bar"><span class="t-label">terminal</span><button class="copy-btn" onclick="copyCode(this)"><span>⎘</span> Copy</button></div>
+                <div class="terminal-code"><span class="cm"># Open your crontab for editing</span>
+crontab -e</div>
+            </div>
+            <p>Add this line to run every Sunday at 02:00, logging output to <code>/var/log/clamav-scan.log</code>:</p>
+            <div class="terminal">
+                <div class="terminal-bar"><span class="t-label">crontab entry</span><button class="copy-btn" onclick="copyCode(this)"><span>⎘</span> Copy</button></div>
+                <div class="terminal-code">0 2 * * 0 clamscan -r -i --log=/var/log/clamav-scan.log ~/</div>
+            </div>
+            <p>To review the most recent scan log:</p>
+            <div class="terminal">
+                <div class="terminal-bar"><span class="t-label">terminal</span><button class="copy-btn" onclick="copyCode(this)"><span>⎘</span> Copy</button></div>
+                <div class="terminal-code">cat /var/log/clamav-scan.log</div>
+            </div>
+            <p class="note">The <code>freshclam</code> service handles definition updates independently — your definitions stay current automatically regardless of when you scan.</p>
+        </div>
+    </div>
+
+</div>
+<script>
+function copyCode(btn) {
+    const code = btn.closest('.terminal').querySelector('.terminal-code').innerText.trim();
+    navigator.clipboard.writeText(code).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<span>✓</span> Copied';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2000);
+    });
+}
+</script>
+</body>
+</html>
